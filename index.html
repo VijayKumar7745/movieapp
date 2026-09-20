@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CinePass - Premium Movie Booking Experience</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            red: '#e50914',
+                            purple: '#6366f1',
+                            pink: '#ec4899',
+                            dark: '#0b0f19',
+                            card: '#151c2c',
+                            seatAvailable: '#334155',
+                            seatSelected: '#10b981',
+                            seatOccupied: '#ef4444',
+                            seatVip: '#f59e0b',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- QRCode.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0f19;
+            color: #f1f5f9;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0f19;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+        /* Glassmorphism utility */
+        .glass {
+            background: rgba(21, 28, 44, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glass-modal {
+            background: rgba(15, 23, 42, 0.92);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        /* Screen Perspective Curve */
+        .cinema-screen {
+            height: 18px;
+            background: linear-gradient(to bottom, rgba(56, 189, 248, 0.8), rgba(99, 102, 241, 0.2), transparent);
+            border-top: 3px solid #38bdf8;
+            border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+            box-shadow: 0 -10px 30px rgba(56, 189, 248, 0.4);
+        }
+        /* Seat styling transitions */
+        .seat {
+            transition: all 0.2s ease-in-out;
+        }
+        .seat:not(.occupied):hover {
+            transform: scale(1.18);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+        /* Hide scrollbars for slick scrolling */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-brand-red selection:text-white">
+
+    <!-- Navbar Header -->
+    <header class="sticky top-0 z-40 glass border-b border-slate-800 px-4 lg:px-8 py-3.5 transition-all">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            <!-- Brand Logo -->
+            <a href="#" onclick="resetToHome()" class="flex items-center gap-2 group">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-red via-brand-purple to-brand-pink flex items-center justify-center shadow-lg shadow-brand-red/30 group-hover:scale-105 transition-transform">
+                    <i class="fa-solid fa-film text-white text-xl"></i>
+                </div>
+                <span class="text-2xl font-black tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-slate-400">
+                    Cine<span class="text-brand-red">Pass</span>
+                </span>
+            </a>
+
+            <!-- Location Selector & Search Container -->
+            <div class="hidden md:flex items-center gap-4 flex-1 max-w-xl mx-4">
+                <!-- City Selector -->
+                <div class="relative group min-w-[140px]">
+                    <i class="fa-solid fa-location-dot absolute left-3 top-1/2 -translate-y-1/2 text-brand-red text-sm"></i>
+                    <select id="citySelect" onchange="handleCityChange(this.value)" class="w-full bg-slate-900/80 text-xs font-semibold text-slate-200 rounded-xl pl-8 pr-8 py-2.5 border border-slate-700/60 focus:outline-none focus:border-brand-purple cursor-pointer appearance-none">
+                        <option value="New York">New York</option>
+                        <option value="Los Angeles">Los Angeles</option>
+                        <option value="London">London</option>
+                        <option value="Tokyo">Tokyo</option>
+                        <option value="Mumbai">Mumbai</option>
+                    </select>
+                    <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+                </div>
+
+                <!-- Global Search Input -->
+                <div class="relative flex-1">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                    <input type="text" id="searchInput" oninput="handleSearch()" placeholder="Search movies, genres, languages..." class="w-full bg-slate-900/80 text-sm text-slate-100 placeholder-slate-500 rounded-xl pl-10 pr-4 py-2 border border-slate-700/60 focus:outline-none focus:border-brand-purple transition-all">
+                </div>
+            </div>
+
+            <!-- Right Actions -->
+            <div class="flex items-center gap-3">
+                <button onclick="openBookingHistoryModal()" class="flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-200 text-xs md:text-sm font-medium px-4 py-2.5 rounded-xl border border-slate-700 transition">
+                    <i class="fa-solid fa-ticket text-brand-purple"></i>
+                    <span>My Tickets</span>
+                    <span id="ticketBadgeCount" class="hidden bg-brand-red text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-0.5">0</span>
+                </button>
+                <div class="w-9 h-9 rounded-full bg-gradient-to-r from-purple-500 to-indigo-600 p-0.5 cursor-pointer hover:ring-2 ring-brand-purple/50 transition">
+                    <div class="w-full h-full bg-slate-900 rounded-full flex items-center justify-center">
+                        <i class="fa-solid fa-user text-xs text-slate-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Search Row -->
+        <div class="mt-3 md:hidden flex gap-2">
+            <div class="relative flex-1">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                <input type="text" id="searchInputMobile" oninput="syncMobileSearch(this.value)" placeholder="Search movies..." class="w-full bg-slate-900 text-xs text-slate-100 placeholder-slate-500 rounded-lg pl-8 pr-3 py-2 border border-slate-800 focus:outline-none">
+            </div>
+            <select id="citySelectMobile" onchange="handleCityChange(this.value)" class="bg-slate-900 text-xs font-semibold text-slate-200 rounded-lg px-2 py-2 border border-slate-800">
+                <option value="New York">NY</option>
+                <option value="Los Angeles">LA</option>
+                <option value="London">LDN</option>
+                <option value="Tokyo">TYO</option>
+                <option value="Mumbai">BOM</option>
+            </select>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 py-6 space-y-8">
+        
+        <!-- Hero Featured Carousel Banner -->
+        <section class="relative rounded-3xl overflow-hidden shadow-2xl bg-slate-900 border border-slate-800 group" id="heroBanner">
+            <div id="heroSlideContainer" class="relative min-h-[380px] md:min-h-[460px] flex items-end p-6 md:p-12 transition-all duration-700 bg-cover bg-center">
+                <!-- Gradient Overlay -->
+                <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/70 to-transparent"></div>
+                <div class="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/40 to-transparent"></div>
+
+                <!-- Featured Movie Details -->
+                <div class="relative z-10 max-w-2xl space-y-3.5">
+                    <div class="flex flex-wrap items-center gap-2 text-xs font-semibold">
+                        <span class="bg-brand-red/90 text-white px-2.5 py-1 rounded-md tracking-wider uppercase">FEATURED</span>
+                        <span id="heroFormat" class="bg-slate-800/90 text-slate-200 px-2.5 py-1 rounded-md border border-slate-700">IMAX 3D</span>
+                        <span id="heroRating" class="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2.5 py-1 rounded-md flex items-center gap-1">
+                            <i class="fa-solid fa-star text-amber-400"></i> 8.9
+                        </span>
+                        <span id="heroAge" class="bg-slate-800/80 text-slate-300 px-2 py-1 rounded-md">PG-13</span>
+                    </div>
+
+                    <h1 id="heroTitle" class="text-3xl md:text-5xl font-black tracking-tight text-white drop-shadow-md">
+                        Dune: Part Two
+                    </h1>
+
+                    <p id="heroOverview" class="text-xs md:text-sm text-slate-300 line-clamp-2 md:line-clamp-3 max-w-xl leading-relaxed">
+                        Paul Atreides unites with Chani and the Fremen while seeking revenge against the conspirators who destroyed his family. Facing a choice between the love of his life and the fate of the universe.
+                    </p>
+
+                    <div class="pt-2 flex flex-wrap items-center gap-3">
+                        <button id="heroBookBtn" onclick="initiateBookingFromHero()" class="bg-gradient-to-r from-brand-red to-rose-600 hover:from-rose-600 hover:to-brand-red text-white font-bold text-sm px-6 py-3 rounded-xl shadow-lg shadow-brand-red/30 flex items-center gap-2 transform active:scale-95 transition">
+                            <i class="fa-solid fa-ticket"></i> Book Now
+                        </button>
+                        <button id="heroTrailerBtn" onclick="playTrailerFromHero()" class="glass hover:bg-slate-800/80 text-slate-200 font-semibold text-sm px-5 py-3 rounded-xl border border-slate-700 flex items-center gap-2 transition">
+                            <i class="fa-solid fa-circle-play text-brand-purple"></i> Watch Trailer
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Carousel Nav Dots -->
+                <div class="absolute bottom-4 right-6 z-20 flex gap-2" id="heroDots">
+                    <!-- Dots generated dynamically -->
+                </div>
+            </div>
+        </section>
+
+        <section class="space-y-4">
+            <div class="flex items-center justify-between">
+                <h2 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                    <i class="fa-solid fa-fire text-brand-red"></i> Now Showing
+                </h2>
+                <span id="movieCountText" class="text-xs font-medium text-slate-400">Showing 8 movies</span>
+            </div>
+
+            <!-- Genre Filter Pills Slider -->
+            <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2" id="genreContainer">
+                <!-- Pills generated dynamically -->
+            </div>
+        </section>
+
+        <section id="movieGridSection" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- Dynamic Movie Cards Inserted Here -->
+        </section>
+
+        <!-- Empty Filter State -->
+        <div id="noResultsState" class="hidden text-center py-16 space-y-3">
+            <div class="w-16 h-16 rounded-full bg-slate-800/80 flex items-center justify-center mx-auto text-slate-500 text-2xl">
+                <i class="fa-solid fa-film-slash"></i>
+            </div>
+            <h3 class="text-lg font-bold text-slate-300">No movies found</h3>
+            <p class="text-sm text-slate-500">Try adjusting your search criteria or genre filters.</p>
+            <button onclick="resetFilters()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-lg font-medium transition">Reset Filters</button>
+        </div>
+
+    </main>
+
+    <div id="bookingModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+        <!-- Backdrop -->
+        <div class="fixed inset-0 bg-slate-950/80 backdrop-blur-md transition-opacity" onclick="closeBookingModal()"></div>
+
+        <!-- Modal Box -->
+        <div class="relative w-full max-w-4xl glass-modal rounded-3xl shadow-2xl border border-slate-700/80 overflow-hidden flex flex-col max-h-[92vh] z-10 my-auto">
+            
+            <!-- Modal Header -->
+            <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/60">
+                <div class="flex items-center gap-3">
+                    <img id="modalMovieThumb" src="" alt="poster" class="w-10 h-14 object-cover rounded-md border border-slate-700 hidden sm:block">
+                    <div>
+                        <h3 id="modalMovieTitle" class="text-lg font-bold text-white leading-tight">Movie Title</h3>
+                        <p id="modalMovieSub" class="text-xs text-slate-400">2D / 3D • Action, Sci-Fi • 2h 45m</p>
+                    </div>
+                </div>
+
+                <!-- Close Button -->
+                <button onclick="closeBookingModal()" class="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Wizard Progress Indicator -->
+            <div class="bg-slate-950/60 px-6 py-3 border-b border-slate-800/80">
+                <div class="flex items-center justify-between max-w-md mx-auto text-xs font-semibold">
+                    <div id="stepDot1" class="flex items-center gap-2 text-brand-purple">
+                        <span class="w-6 h-6 rounded-full bg-brand-purple text-white flex items-center justify-center text-[11px] font-bold">1</span>
+                        <span class="hidden sm:inline">Showtime</span>
+                    </div>
+                    <div class="w-8 h-0.5 bg-slate-800"></div>
+                    <div id="stepDot2" class="flex items-center gap-2 text-slate-500">
+                        <span class="w-6 h-6 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center text-[11px] font-bold">2</span>
+                        <span class="hidden sm:inline">Seats</span>
+                    </div>
+                    <div class="w-8 h-0.5 bg-slate-800"></div>
+                    <div id="stepDot3" class="flex items-center gap-2 text-slate-500">
+                        <span class="w-6 h-6 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center text-[11px] font-bold">3</span>
+                        <span class="hidden sm:inline">Snacks</span>
+                    </div>
+                    <div class="w-8 h-0.5 bg-slate-800"></div>
+                    <div id="stepDot4" class="flex items-center gap-2 text-slate-500">
+                        <span class="w-6 h-6 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center text-[11px] font-bold">4</span>
+                        <span class="hidden sm:inline">Checkout</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Content Steps Container -->
+            <div class="p-4 sm:p-6 overflow-y-auto flex-1 space-y-6">
+
+                <!-- STEP 1: Cinema & Showtime -->
+                <div id="stepContent1" class="space-y-6">
+                    <!-- Theater Selection -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">1. Select Cinema Location</label>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" id="theaterOptions">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Date Selection -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">2. Select Date</label>
+                        <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1" id="dateOptions">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Format & Showtimes -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">3. Experience & Showtime</label>
+                        <div class="space-y-3" id="showtimeGroupContainer">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 2: Interactive Seat Matrix Selection -->
+                <div id="stepContent2" class="hidden space-y-6">
+                    <!-- Screen visual -->
+                    <div class="space-y-2 text-center pt-2">
+                        <div class="cinema-screen max-w-xl mx-auto"></div>
+                        <p class="text-[10px] tracking-widest text-slate-400 uppercase font-semibold">SCREEN THIS WAY</p>
+                    </div>
+
+                    <!-- Seat Matrix Container -->
+                    <div class="overflow-x-auto no-scrollbar py-2">
+                        <div class="min-w-[340px] max-w-lg mx-auto space-y-3" id="seatMatrix">
+                            <!-- Generated Seats -->
+                        </div>
+                    </div>
+
+                    <!-- Legend -->
+                    <div class="flex flex-wrap items-center justify-center gap-4 text-xs bg-slate-900/60 py-2.5 px-4 rounded-xl border border-slate-800">
+                        <div class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded bg-brand-seatAvailable border border-slate-600"></span><span class="text-slate-400">Available</span></div>
+                        <div class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded bg-emerald-500 shadow-sm shadow-emerald-500/50"></span><span class="text-slate-200 font-medium">Selected</span></div>
+                        <div class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded bg-slate-800 border border-slate-700/50 cursor-not-allowed"></span><span class="text-slate-500">Booked</span></div>
+                        <div class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded bg-amber-500/30 border border-amber-500"></span><span class="text-amber-300">VIP ($20)</span></div>
+                    </div>
+
+                    <!-- Selected Seats Live Info -->
+                    <div class="bg-slate-900/90 p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
+                        <div>
+                            <span class="text-xs text-slate-400 block">Selected Seats</span>
+                            <span id="selectedSeatsList" class="text-sm font-bold text-emerald-400">None selected</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-xs text-slate-400 block">Tickets Price</span>
+                            <span id="ticketsSubtotal" class="text-lg font-extrabold text-white">$0.00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 3: Food & Snacks Addons -->
+                <div id="stepContent3" class="hidden space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h4 class="text-base font-bold text-white">Enhance Your Experience</h4>
+                            <p class="text-xs text-slate-400">Pre-order snacks and avoid theater line queues</p>
+                        </div>
+                        <button onclick="skipSnacks()" class="text-xs text-brand-purple hover:underline font-semibold">Skip for now</button>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" id="snacksGrid">
+                        <!-- Snacks populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- STEP 4: Checkout & Summary -->
+                <div id="stepContent4" class="hidden space-y-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Summary Breakdown Column -->
+                        <div class="lg:col-span-2 space-y-4">
+                            <h4 class="text-sm font-bold text-slate-300 uppercase tracking-wider">Booking Breakdown</h4>
+                            
+                            <div class="bg-slate-900/80 rounded-2xl p-4 border border-slate-800 space-y-3">
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-slate-400">Movie & Showtime</span>
+                                    <span id="summaryMovieInfo" class="font-semibold text-slate-200">Dune: Part Two (IMAX 3D)</span>
+                                </div>
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-slate-400">Theater & City</span>
+                                    <span id="summaryTheaterInfo" class="font-semibold text-slate-200">AMC Empire 25, NY</span>
+                                </div>
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-slate-400">Seats Chosen</span>
+                                    <span id="summarySeatsInfo" class="font-semibold text-emerald-400">F4, F5</span>
+                                </div>
+                                <hr class="border-slate-800">
+                                <div class="flex justify-between text-xs text-slate-400">
+                                    <span>Tickets Subtotal</span>
+                                    <span id="summaryTicketSubtotal" class="font-semibold text-slate-200">$30.00</span>
+                                </div>
+                                <div class="flex justify-between text-xs text-slate-400">
+                                    <span>Food & Refreshments</span>
+                                    <span id="summarySnacksSubtotal" class="font-semibold text-slate-200">$0.00</span>
+                                </div>
+                                <div class="flex justify-between text-xs text-slate-400">
+                                    <span>Convenience Fee & Taxes</span>
+                                    <span id="summaryTaxSubtotal" class="font-semibold text-slate-200">$2.50</span>
+                                </div>
+                                <hr class="border-slate-800">
+                                <div class="flex justify-between text-base font-bold text-white pt-1">
+                                    <span>Grand Total</span>
+                                    <span id="summaryGrandTotal" class="text-xl text-brand-red">$32.50</span>
+                                </div>
+                            </div>
+
+                            <!-- Payment Options -->
+                            <div class="space-y-3">
+                                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider">Select Payment Method</label>
+                                <div class="grid grid-cols-3 gap-3">
+                                    <label class="border border-slate-700 bg-slate-900/80 rounded-xl p-3 flex flex-col items-center gap-1 cursor-pointer hover:border-brand-purple transition group">
+                                        <input type="radio" name="paymentMethod" value="card" checked class="accent-brand-purple">
+                                        <i class="fa-solid fa-credit-card text-slate-400 group-hover:text-brand-purple text-lg"></i>
+                                        <span class="text-[11px] text-slate-300 font-medium">Card</span>
+                                    </label>
+                                    <label class="border border-slate-700 bg-slate-900/80 rounded-xl p-3 flex flex-col items-center gap-1 cursor-pointer hover:border-brand-purple transition group">
+                                        <input type="radio" name="paymentMethod" value="wallet" class="accent-brand-purple">
+                                        <i class="fa-solid fa-wallet text-slate-400 group-hover:text-brand-purple text-lg"></i>
+                                        <span class="text-[11px] text-slate-300 font-medium">UPI / Wallet</span>
+                                    </label>
+                                    <label class="border border-slate-700 bg-slate-900/80 rounded-xl p-3 flex flex-col items-center gap-1 cursor-pointer hover:border-brand-purple transition group">
+                                        <input type="radio" name="paymentMethod" value="pay" class="accent-brand-purple">
+                                        <i class="fa-brands fa-apple text-slate-400 group-hover:text-brand-purple text-lg"></i>
+                                        <span class="text-[11px] text-slate-300 font-medium">Apple/GPay</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card details mock input -->
+                        <div class="bg-slate-900/60 p-4 rounded-2xl border border-slate-800/80 space-y-3 flex flex-col justify-between">
+                            <div class="space-y-3">
+                                <h5 class="text-xs font-bold text-slate-300 uppercase">Payment Info</h5>
+                                <div>
+                                    <label class="text-[10px] text-slate-400 block mb-1">Cardholder Name</label>
+                                    <input type="text" value="Alex Johnson" class="w-full bg-slate-950 text-xs text-white p-2.5 rounded-lg border border-slate-800 focus:outline-none focus:border-brand-purple">
+                                </div>
+                                <div>
+                                    <label class="text-[10px] text-slate-400 block mb-1">Card Number</label>
+                                    <input type="text" value="•••• •••• •••• 4242" class="w-full bg-slate-950 text-xs text-white p-2.5 rounded-lg border border-slate-800 focus:outline-none focus:border-brand-purple">
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="text-[10px] text-slate-400 block mb-1">Expiry</label>
+                                        <input type="text" value="12/28" class="w-full bg-slate-950 text-xs text-white p-2.5 rounded-lg border border-slate-800 focus:outline-none focus:border-brand-purple">
+                                    </div>
+                                    <div>
+                                        <label class="text-[10px] text-slate-400 block mb-1">CVV</label>
+                                        <input type="password" value="123" class="w-full bg-slate-950 text-xs text-white p-2.5 rounded-lg border border-slate-800 focus:outline-none focus:border-brand-purple">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="pt-2">
+                                <div class="flex items-center gap-2 text-[11px] text-slate-400">
+                                    <i class="fa-solid fa-shield-halved text-emerald-400"></i>
+                                    <span>256-bit Encrypted SSL Security</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Modal Controls Footer -->
+            <div class="p-4 bg-slate-900/80 border-t border-slate-800 flex items-center justify-between">
+                <button id="modalPrevBtn" onclick="prevStep()" class="hidden px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl transition">
+                    <i class="fa-solid fa-arrow-left mr-1"></i> Back
+                </button>
+                <div class="ml-auto flex items-center gap-3">
+                    <button id="modalNextBtn" onclick="nextStep()" class="px-6 py-2.5 bg-gradient-to-r from-brand-red to-rose-600 hover:from-rose-600 hover:to-brand-red text-white text-xs font-bold rounded-xl shadow-lg shadow-brand-red/30 transition flex items-center gap-2">
+                        <span>Continue</span> <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="trailerModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md">
+        <div class="relative w-full max-w-3xl aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-slate-800">
+            <button onclick="closeTrailerModal()" class="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-slate-900/80 text-white hover:bg-brand-red flex items-center justify-center transition">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <iframe id="trailerIframe" class="w-full h-full" src="" title="Trailer" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+        </div>
+    </div>
+
+    <div id="bookingHistoryModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+        <div class="fixed inset-0 bg-slate-950/80 backdrop-blur-md" onclick="closeBookingHistoryModal()"></div>
+        <div class="relative w-full max-w-2xl glass-modal rounded-3xl p-6 border border-slate-700/80 overflow-hidden space-y-6 z-10 max-h-[90vh] flex flex-col">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+                <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-ticket text-brand-purple"></i> My Booked Tickets
+                </h3>
+                <button onclick="closeBookingHistoryModal()" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- List Container -->
+            <div id="historyListContainer" class="flex-1 overflow-y-auto space-y-4 pr-1">
+                <!-- Digital tickets appended dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed bottom-6 right-6 z-50 hidden transform transition-all duration-300 translate-y-10 opacity-0">
+        <div class="glass px-5 py-3 rounded-2xl shadow-2xl border border-slate-700 flex items-center gap-3">
+            <div id="toastIcon" class="w-7 h-7 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs">
+                <i class="fa-solid fa-check"></i>
+            </div>
+            <span id="toastMessage" class="text-xs font-semibold text-slate-200">Notification message</span>
+        </div>
+    </div>
+
+    <footer class="border-t border-slate-800/80 bg-slate-950/80 py-8 px-4 lg:px-8 mt-12">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+            <div class="flex items-center gap-2">
+                <div class="w-6 h-6 rounded-md bg-brand-red flex items-center justify-center text-white text-xs font-bold">C</div>
+                <span class="font-bold text-slate-400">CinePass Platform</span>
+                <span>© 2026 CinePass Inc. All rights reserved.</span>
+            </div>
+            <div class="flex gap-6">
+                <a href="#" class="hover:text-slate-300 transition">Privacy Policy</a>
+                <a href="#" class="hover:text-slate-300 transition">Terms of Service</a>
+                <a href="#" class="hover:text-slate-300 transition">Help & Support</a>
+                <a href="#" class="hover:text-slate-300 transition">Partner Cinemas</a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        /* Global Data & State Store */
+        const state = {
+            city: 'New York',
+            searchQuery: '',
+            selectedGenre: 'All',
+            activeHeroIndex: 0,
+            bookingStep: 1,
+            selectedMovie: null,
+            selectedTheater: null,
+            selectedDate: null,
+            selectedShowtime: null,
+            selectedFormat: '2D',
+            selectedSeats: [], // Array of { id, price, tier }
+            selectedSnacks: {}, // { snackId: quantity }
+            userBookings: []
+        };
+
+        // Movie Database
+        const MOVIES_DATA = [
+            {
+                id: 'm1',
+                title: 'Dune: Part Two',
+                genre: ['Sci-Fi', 'Action', 'Adventure'],
+                rating: 8.9,
+                age: 'PG-13',
+                duration: '2h 46m',
+                language: 'English',
+                formats: ['IMAX 3D', '4DX', '2D'],
+                featured: true,
+                poster: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=800&auto=format&fit=crop',
+                backdrop: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=1600&auto=format&fit=crop',
+                trailerUrl: 'https://www.youtube.com/embed/Way9Dexny3w',
+                overview: 'Paul Atreides unites with Chani and the Fremen while seeking revenge against the conspirators who destroyed his family.'
+            },
+            {
+                id: 'm2',
+                title: 'Cyberpulse 2099',
+                genre: ['Sci-Fi', 'Action'],
+                rating: 8.4,
+                age: 'R',
+                duration: '2h 15m',
+                language: 'English',
+                formats: ['2D', '3D', 'IMAX 3D'],
+                featured: true,
+                poster: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=800&auto=format&fit=crop',
+                backdrop: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=1600&auto=format&fit=crop',
+                trailerUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+                overview: 'In a neon-drenched metropolis, a rogue hacker unravels a sinister conspiracy embedded deep in the cyber grid.'
+            },
+            {
+                id: 'm3',
+                title: 'The Crimson Realm',
+                genre: ['Horror', 'Drama'],
+                rating: 7.8,
+                age: 'R',
+                duration: '1h 58m',
+                language: 'English',
+                formats: ['2D'],
+                featured: true,
+                poster: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=800&auto=format&fit=crop',
+                backdrop: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=1600&auto=format&fit=crop',
+                trailerUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+                overview: 'An ancient curse awakens in an isolated valley town, testing the bounds of sanity and human survival.'
+            },
+            {
+                id: 'm4',
+                title: 'Galactic Odyssey',
+                genre: ['Animation', 'Comedy', 'Sci-Fi'],
+                rating: 8.6,
+                age: 'PG',
+                duration: '1h 42m',
+                language: 'English',
+                formats: ['3D', '2D'],
+                featured: false,
+                poster: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=800&auto=format&fit=crop',
+                backdrop: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=1600&auto=format&fit=crop',
+                trailerUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+                overview: 'Join an eccentric alien crew on a hilarious interstellar roadmap across uncharted star systems.'
+            },
+            {
+                id: 'm5',
+                title: 'Shadows of Venice',
+                genre: ['Drama', 'Mystery'],
+                rating: 8.1,
+                age: 'PG-13',
+                duration: '2h 10m',
+                language: 'Italian',
+                formats: ['2D'],
+                featured: false,
+                poster: 'https://images.unsplash.com/photo-1514890547357-a9ee288728e0?q=80&w=800&auto=format&fit=crop',
+                backdrop: 'https://images.unsplash.com/photo-1514890547357-a9ee288728e0?q=80&w=1600&auto=format&fit=crop',
+                trailerUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+                overview: 'A detective investigates a masked murder mystery during the bustling Venetian carnival weekend.'
+            },
+            {
+                id: 'm6',
+                title: 'Velocity Unbound',
+                genre: ['Action'],
+                rating: 7.5,
+                age: 'PG-13',
+                duration: '2h 05m',
+                language: 'English',
+                formats: ['4DX', '2D'],
+                featured: false,
+                poster: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?q=80&w=800&auto=format&fit=crop',
+                backdrop: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?q=80&w=1600&auto=format&fit=crop',
+                trailerUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+                overview: 'High-octane subterranean street racers unite to rescue an abducted teammate in Tokyo.'
+            },
+            {
+                id: 'm7',
+                title: 'Echoes of Eternity',
+                genre: ['Drama', 'Romance'],
+                rating: 8.3,
+                age: 'PG-13',
+                duration: '2h 20m',
+                language: 'English',
+                formats: ['2D'],
+                featured: false,
+                poster: 'https://images.unsplash.com/photo-1518173946687-a4c8a383392e?q=80&w=800&auto=format&fit=crop',
+                backdrop: 'https://images.unsplash.com/photo-1518173946687-a4c8a383392e?q=80&w=800&auto=format&fit=crop',
+                trailerUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+                overview: 'A poignant love story spanning two centuries through mysterious letters discovered in a vintage desk.'
+            },
+            {
+                id: 'm8',
+                title: 'Kingdom of Spirits',
+                genre: ['Animation', 'Fantasy'],
+                rating: 9.0,
+                age: 'PG',
+                duration: '2h 02m',
+                language: 'Japanese',
+                formats: ['2D', '3D'],
+                featured: false,
+                poster: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=800&auto=format&fit=crop',
+                backdrop: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=800&auto=format&fit=crop',
+                trailerUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+                overview: 'A young girl wanders into an enchanted spirit world and must find a way to break an ancient spell.'
+            }
+        ];
+
+        // Genre List
+        const GENRES = ['All', 'Action', 'Sci-Fi', 'Drama', 'Animation', 'Horror', 'Comedy', 'Mystery'];
+
+        // Theater Data Mapping
+        const THEATERS = {
+            'New York': ['AMC Empire 25', 'Regal Times Square', 'IPIC Fulton Market'],
+            'Los Angeles': ['TCL Chinese Theatre', 'AMC Century City', 'The Landmark LA'],
+            'London': ['Odeon Leicester Square', 'Vue West End', 'Picturehouse Central'],
+            'Tokyo': ['TOHO Cinemas Shinjuku', 'T-Joy PRINCE Shinagawa', '109 Cinemas Premium'],
+            'Mumbai': ['PVR Director’s Cut', 'INOX Megaplex', 'Cinepolis Fun Republic']
+        };
+
+        // Food & Snack Items
+        const SNACKS_DATA = [
+            { id: 's1', name: 'Jumbo Butter Popcorn', price: 8.50, desc: 'Freshly popped warm buttery crunch', icon: 'fa-bowl-food' },
+            { id: 's2', name: 'Chilly Soda Duo (Large)', price: 6.00, desc: 'Choice of Cold Cola or Lemon Lime', icon: 'fa-glass-water' },
+            { id: 's3', name: 'Loaded Cheese Nachos', price: 9.50, desc: 'Crispy corn tortilla chips with warm cheese dip', icon: 'fa-cookie' },
+            { id: 's4', name: 'Epic Blockbuster Combo', price: 15.00, desc: 'Large Popcorn + 2 Drinks + Candy Box', icon: 'fa-box-open' }
+        ];
+
+        /* Initialize Page */
+        window.addEventListener('DOMContentLoaded', () => {
+            renderHeroCarousel();
+            renderGenres();
+            renderMoviesGrid();
+            startHeroAutoRotation();
+        });
+
+        let heroInterval;
+        const featuredMovies = MOVIES_DATA.filter(m => m.featured);
+
+        function renderHeroCarousel() {
+            const current = featuredMovies[state.activeHeroIndex];
+            const heroSlide = document.getElementById('heroSlideContainer');
+            
+            heroSlide.style.backgroundImage = `url('${current.backdrop}')`;
+            document.getElementById('heroTitle').innerText = current.title;
+            document.getElementById('heroOverview').innerText = current.overview;
+            document.getElementById('heroFormat').innerText = current.formats[0];
+            document.getElementById('heroRating').innerHTML = `<i class="fa-solid fa-star text-amber-400"></i> ${current.rating}`;
+            document.getElementById('heroAge').innerText = current.age;
+
+            // Render Nav Dots
+            const dotsContainer = document.getElementById('heroDots');
+            dotsContainer.innerHTML = featuredMovies.map((_, idx) => `
+                <button onclick="setHeroIndex(${idx})" class="w-3 h-3 rounded-full transition-all ${idx === state.activeHeroIndex ? 'bg-brand-red w-8' : 'bg-slate-600/80 hover:bg-slate-400'}"></button>
+            `).join('');
+        }
+
+        function setHeroIndex(idx) {
+            state.activeHeroIndex = idx;
+            renderHeroCarousel();
+            resetHeroTimer();
+        }
+
+        function startHeroAutoRotation() {
+            heroInterval = setInterval(() => {
+                state.activeHeroIndex = (state.activeHeroIndex + 1) % featuredMovies.length;
+                renderHeroCarousel();
+            }, 6000);
+        }
+
+        function resetHeroTimer() {
+            clearInterval(heroInterval);
+            startHeroAutoRotation();
+        }
+
+        function initiateBookingFromHero() {
+            const currentMovie = featuredMovies[state.activeHeroIndex];
+            openBookingModal(currentMovie.id);
+        }
+
+        function playTrailerFromHero() {
+            const currentMovie = featuredMovies[state.activeHeroIndex];
+            openTrailerModal(currentMovie.trailerUrl);
+        }
+
+        function renderGenres() {
+            const container = document.getElementById('genreContainer');
+            container.innerHTML = GENRES.map(g => `
+                <button onclick="selectGenre('${g}')" class="px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${state.selectedGenre === g ? 'bg-brand-red border-brand-red text-white shadow-md shadow-brand-red/30' : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-800'}">
+                    ${g}
+                </button>
+            `).join('');
+        }
+
+        function selectGenre(genre) {
+            state.selectedGenre = genre;
+            renderGenres();
+            renderMoviesGrid();
+        }
+
+        function handleSearch() {
+            state.searchQuery = document.getElementById('searchInput').value.toLowerCase();
+            renderMoviesGrid();
+        }
+
+        function syncMobileSearch(val) {
+            document.getElementById('searchInput').value = val;
+            handleSearch();
+        }
+
+        function handleCityChange(newCity) {
+            state.city = newCity;
+            document.getElementById('citySelect').value = newCity;
+            document.getElementById('citySelectMobile').value = newCity;
+            showToast(`Location changed to ${newCity}`);
+        }
+
+        function resetFilters() {
+            state.searchQuery = '';
+            state.selectedGenre = 'All';
+            document.getElementById('searchInput').value = '';
+            document.getElementById('searchInputMobile').value = '';
+            renderGenres();
+            renderMoviesGrid();
+        }
+
+        function resetToHome() {
+            resetFilters();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function renderMoviesGrid() {
+            const grid = document.getElementById('movieGridSection');
+            const noResults = document.getElementById('noResultsState');
+
+            const filtered = MOVIES_DATA.filter(movie => {
+                const matchesGenre = state.selectedGenre === 'All' || movie.genre.includes(state.selectedGenre);
+                const matchesSearch = movie.title.toLowerCase().includes(state.searchQuery) ||
+                                      movie.genre.some(g => g.toLowerCase().includes(state.searchQuery)) ||
+                                      movie.language.toLowerCase().includes(state.searchQuery);
+                return matchesGenre && matchesSearch;
+            });
+
+            document.getElementById('movieCountText').innerText = `Showing ${filtered.length} movie${filtered.length === 1 ? '' : 's'}`;
+
+            if (filtered.length === 0) {
+                grid.innerHTML = '';
+                noResults.classList.remove('hidden');
+                return;
+            }
+
+            noResults.classList.add('hidden');
+            grid.innerHTML = filtered.map(movie => `
+                <div class="glass rounded-2xl overflow-hidden border border-slate-800/90 group hover:border-slate-700 hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between">
+                    <div>
+                        <!-- Poster Container -->
+                        <div class="relative overflow-hidden aspect-[2/3] bg-slate-900 cursor-pointer" onclick="openBookingModal('${movie.id}')">
+                            <img src="${movie.poster}" alt="${movie.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                            
+                            <!-- Badges -->
+                            <div class="absolute top-3 left-3 flex flex-wrap gap-1.5">
+                                <span class="bg-slate-900/80 backdrop-blur-md text-amber-400 text-[11px] font-bold px-2 py-0.5 rounded-md border border-amber-500/30 flex items-center gap-1">
+                                    <i class="fa-solid fa-star text-amber-400"></i> ${movie.rating}
+                                </span>
+                                <span class="bg-slate-900/80 backdrop-blur-md text-slate-200 text-[11px] font-bold px-2 py-0.5 rounded-md border border-slate-700">
+                                    ${movie.formats[0]}
+                                </span>
+                            </div>
+
+                            <button onclick="event.stopPropagation(); openTrailerModal('${movie.trailerUrl}')" class="absolute bottom-3 right-3 w-9 h-9 rounded-full bg-slate-950/80 hover:bg-brand-purple text-white flex items-center justify-center transition shadow-lg opacity-0 group-hover:opacity-100">
+                                <i class="fa-solid fa-play text-xs"></i>
+                            </button>
+                        </div>
+
+                        <!-- Card Body -->
+                        <div class="p-4 space-y-2">
+                            <div class="flex items-center justify-between text-[11px] text-slate-400">
+                                <span>${movie.language}</span>
+                                <span>${movie.duration}</span>
+                            </div>
+
+                            <h3 onclick="openBookingModal('${movie.id}')" class="font-bold text-base text-white group-hover:text-brand-purple transition cursor-pointer line-clamp-1">
+                                ${movie.title}
+                            </h3>
+
+                            <p class="text-xs text-slate-400 line-clamp-1">
+                                ${movie.genre.join(', ')}
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Card Footer Action -->
+                    <div class="p-4 pt-0">
+                        <button onclick="openBookingModal('${movie.id}')" class="w-full bg-slate-800 hover:bg-brand-red text-slate-200 hover:text-white text-xs font-bold py-2.5 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-ticket"></i> Book Tickets
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openBookingModal(movieId) {
+            const movie = MOVIES_DATA.find(m => m.id === movieId);
+            if (!movie) return;
+
+            state.selectedMovie = movie;
+            state.bookingStep = 1;
+            state.selectedSeats = [];
+            state.selectedSnacks = {};
+
+            // Populate Modal Top Info
+            document.getElementById('modalMovieTitle').innerText = movie.title;
+            document.getElementById('modalMovieSub').innerText = `${movie.formats.join(', ')} • ${movie.genre.join(', ')} • ${movie.duration}`;
+            document.getElementById('modalMovieThumb').src = movie.poster;
+
+            // Setup Step 1 Options
+            setupStep1Options();
+
+            // Display Modal
+            document.getElementById('bookingModal').classList.remove('hidden');
+            updateBookingStepUI();
+        }
+
+        function closeBookingModal() {
+            document.getElementById('bookingModal').classList.add('hidden');
+        }
+
+        function setupStep1Options() {
+            // Setup Theaters based on selected city
+            const cityTheaters = THEATERS[state.city] || THEATERS['New York'];
+            state.selectedTheater = cityTheaters[0];
+
+            const theaterContainer = document.getElementById('theaterOptions');
+            theaterContainer.innerHTML = cityTheaters.map((th, idx) => `
+                <div onclick="selectTheater('${th}')" class="theater-card p-3 rounded-xl border text-left cursor-pointer transition ${state.selectedTheater === th ? 'bg-brand-purple/20 border-brand-purple text-white' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'}">
+                    <div class="font-bold text-xs text-slate-200">${th}</div>
+                    <div class="text-[10px] text-slate-500 mt-1">Dolby Atmos & Laser Projection</div>
+                </div>
+            `).join('');
+
+            // Setup Dates (Next 7 Days)
+            const dateContainer = document.getElementById('dateOptions');
+            const dates = [];
+            const today = new Date();
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(today);
+                d.setDate(today.getDate() + i);
+                dates.push({
+                    full: d.toISOString().split('T')[0],
+                    day: d.toLocaleDateString('en-US', { weekday: 'short' }),
+                    num: d.getDate(),
+                    month: d.toLocaleDateString('en-US', { month: 'short' })
+                });
+            }
+            state.selectedDate = dates[0].full;
+
+            dateContainer.innerHTML = dates.map((d, idx) => `
+                <div onclick="selectDate('${d.full}')" class="date-card min-w-[65px] p-2.5 rounded-xl border text-center cursor-pointer transition ${state.selectedDate === d.full ? 'bg-brand-red text-white border-brand-red' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'}">
+                    <div class="text-[10px] font-medium uppercase">${d.day}</div>
+                    <div class="text-base font-extrabold my-0.5">${d.num}</div>
+                    <div class="text-[9px] text-slate-400 uppercase">${d.month}</div>
+                </div>
+            `).join('');
+
+            // Setup Format & Showtimes
+            setupShowtimesUI();
+        }
+
+        function selectTheater(th) {
+            state.selectedTheater = th;
+            setupStep1Options();
+        }
+
+        function selectDate(dateStr) {
+            state.selectedDate = dateStr;
+            setupStep1Options();
+        }
+
+        function setupShowtimesUI() {
+            const timesByFormat = {
+                'IMAX 3D': ['10:30 AM', '02:15 PM', '06:00 PM', '09:45 PM'],
+                '3D': ['11:00 AM', '03:00 PM', '07:15 PM'],
+                '2D': ['09:30 AM', '01:00 PM', '04:30 PM', '08:00 PM', '11:15 PM']
+            };
+
+            const formatsAvailable = state.selectedMovie.formats;
+            state.selectedFormat = formatsAvailable[0];
+            state.selectedShowtime = timesByFormat[formatsAvailable[0]] ? timesByFormat[formatsAvailable[0]][0] : '07:00 PM';
+
+            const showtimeContainer = document.getElementById('showtimeGroupContainer');
+            showtimeContainer.innerHTML = formatsAvailable.map(fmt => {
+                const times = timesByFormat[fmt] || ['01:00 PM', '05:00 PM', '09:00 PM'];
+                return `
+                    <div class="bg-slate-900/60 p-3 rounded-2xl border border-slate-800">
+                        <div class="text-xs font-bold text-slate-300 mb-2 flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-brand-purple"></span>
+                            <span>${fmt} Experience</span>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            ${times.map(t => {
+                                const isSelected = state.selectedFormat === fmt && state.selectedShowtime === t;
+                                return `
+                                    <button onclick="selectShowtime('${fmt}', '${t}')" class="px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${isSelected ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300' : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700'}">
+                                        ${t}
+                                    </button>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function selectShowtime(fmt, time) {
+            state.selectedFormat = fmt;
+            state.selectedShowtime = time;
+            setupShowtimesUI();
+        }
+
+        function renderSeatMatrix() {
+            const matrix = document.getElementById('seatMatrix');
+            const rows = ['A', 'B', 'C', 'D', 'E', 'F'];
+            const cols = 8;
+
+            // Generate deterministic occupied seats
+            const occupiedSeats = ['A3', 'B5', 'B6', 'C2', 'D4', 'D5'];
+
+            matrix.innerHTML = rows.map(row => {
+                const isVip = row === 'F';
+                const rowPrice = isVip ? 20.00 : (row === 'E' || row === 'D' ? 15.00 : 10.00);
+
+                let colsHtml = '';
+                for (let c = 1; c <= cols; c++) {
+                    const seatId = `${row}${c}`;
+                    const isOccupied = occupiedSeats.includes(seatId);
+                    const isSelected = state.selectedSeats.some(s => s.id === seatId);
+
+                    let seatClass = 'bg-brand-seatAvailable border-slate-600 text-slate-400';
+                    if (isOccupied) {
+                        seatClass = 'bg-slate-800 border-slate-800 text-slate-600 cursor-not-allowed opacity-60 occupied';
+                    } else if (isSelected) {
+                        seatClass = 'bg-emerald-500 border-emerald-400 text-white shadow-lg shadow-emerald-500/40';
+                    } else if (isVip) {
+                        seatClass = 'bg-amber-500/20 border-amber-500/60 text-amber-300 hover:bg-amber-500/40';
+                    }
+
+                    colsHtml += `
+                        <button ${isOccupied ? 'disabled' : ''} onclick="toggleSeat('${seatId}', ${rowPrice}, '${isVip ? 'VIP' : 'Standard'}')" class="seat w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-[10px] font-bold border flex items-center justify-center ${seatClass}">
+                            ${c}
+                        </button>
+                    `;
+                    // Gap for central aisle
+                    if (c === 4) colsHtml += `<div class="w-4 sm:w-6"></div>`;
+                }
+
+                return `
+                    <div class="flex items-center justify-center gap-1.5 sm:gap-2">
+                        <span class="w-4 text-[10px] font-bold text-slate-500 text-right">${row}</span>
+                        <div class="flex items-center gap-1.5 sm:gap-2">${colsHtml}</div>
+                        <span class="w-4 text-[10px] font-bold text-slate-500 text-left">${row}</span>
+                    </div>
+                `;
+            }).join('');
+
+            updateSeatSummary();
+        }
+
+        function toggleSeat(seatId, price, tier) {
+            const index = state.selectedSeats.findIndex(s => s.id === seatId);
+            if (index > -1) {
+                state.selectedSeats.splice(index, 1);
+            } else {
+                if (state.selectedSeats.length >= 8) {
+                    showToast('Maximum 8 tickets allowed per booking!');
+                    return;
+                }
+                state.selectedSeats.push({ id: seatId, price, tier });
+            }
+            renderSeatMatrix();
+        }
+
+        function updateSeatSummary() {
+            const seatsListEl = document.getElementById('selectedSeatsList');
+            const totalEl = document.getElementById('ticketsSubtotal');
+
+            if (state.selectedSeats.length === 0) {
+                seatsListEl.innerText = 'None selected';
+                totalEl.innerText = '$0.00';
+                return;
+            }
+
+            const seatNames = state.selectedSeats.map(s => s.id).join(', ');
+            const subtotal = state.selectedSeats.reduce((acc, s) => acc + s.price, 0);
+
+            seatsListEl.innerText = `${seatNames} (${state.selectedSeats.length})`;
+            totalEl.innerText = `$${subtotal.toFixed(2)}`;
+        }
+
+        function renderSnacksGrid() {
+            const container = document.getElementById('snacksGrid');
+            container.innerHTML = SNACKS_DATA.map(snack => {
+                const qty = state.selectedSnacks[snack.id] || 0;
+                return `
+                    <div class="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-slate-800 text-brand-purple flex items-center justify-center text-lg">
+                                <i class="fa-solid ${snack.icon}"></i>
+                            </div>
+                            <div>
+                                <h5 class="text-xs font-bold text-slate-200">${snack.name}</h5>
+                                <p class="text-[10px] text-slate-400">${snack.desc}</p>
+                                <span class="text-xs font-bold text-brand-red">${snack.price.toFixed(2)}</span>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                            <button onclick="updateSnackQty('${snack.id}', -1)" class="w-6 h-6 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 flex items-center justify-center text-xs font-bold">-</button>
+                            <span class="text-xs font-bold w-4 text-center text-white">${qty}</span>
+                            <button onclick="updateSnackQty('${snack.id}', 1)" class="w-6 h-6 rounded-lg bg-brand-purple text-white flex items-center justify-center text-xs font-bold">+</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateSnackQty(snackId, change) {
+            const current = state.selectedSnacks[snackId] || 0;
+            const updated = Math.max(0, current + change);
+            if (updated === 0) {
+                delete state.selectedSnacks[snackId];
+            } else {
+                state.selectedSnacks[snackId] = updated;
+            }
+            renderSnacksGrid();
+        }
+
+        function skipSnacks() {
+            state.selectedSnacks = {};
+            nextStep();
+        }
+
+        function setupCheckoutSummary() {
+            const ticketsSubtotal = state.selectedSeats.reduce((acc, s) => acc + s.price, 0);
+            
+            let snacksSubtotal = 0;
+            Object.keys(state.selectedSnacks).forEach(snackId => {
+                const item = SNACKS_DATA.find(s => s.id === snackId);
+                if (item) {
+                    snacksSubtotal += item.price * state.selectedSnacks[snackId];
+                }
+            });
+
+            const tax = 2.50;
+            const grandTotal = ticketsSubtotal + snacksSubtotal + tax;
+
+            document.getElementById('summaryMovieInfo').innerText = `${state.selectedMovie.title} (${state.selectedFormat})`;
+            document.getElementById('summaryTheaterInfo').innerText = `${state.selectedTheater}, ${state.city}`;
+            document.getElementById('summarySeatsInfo').innerText = state.selectedSeats.map(s => s.id).join(', ');
+
+            document.getElementById('summaryTicketSubtotal').innerText = `$${ticketsSubtotal.toFixed(2)}`;
+            document.getElementById('summarySnacksSubtotal').innerText = `$${snacksSubtotal.toFixed(2)}`;
+            document.getElementById('summaryTaxSubtotal').innerText = `$${tax.toFixed(2)}`;
+            document.getElementById('summaryGrandTotal').innerText = `$${grandTotal.toFixed(2)}`;
+        }
+
+        function nextStep() {
+            if (state.bookingStep === 1) {
+                // Advance to Seats
+                state.bookingStep = 2;
+                renderSeatMatrix();
+            } else if (state.bookingStep === 2) {
+                if (state.selectedSeats.length === 0) {
+                    showToast('Please select at least 1 seat to proceed.');
+                    return;
+                }
+                state.bookingStep = 3;
+                renderSnacksGrid();
+            } else if (state.bookingStep === 3) {
+                state.bookingStep = 4;
+                setupCheckoutSummary();
+            } else if (state.bookingStep === 4) {
+                completeBooking();
+                return;
+            }
+            updateBookingStepUI();
+        }
+
+        function prevStep() {
+            if (state.bookingStep > 1) {
+                state.bookingStep--;
+                updateBookingStepUI();
+            }
+        }
+
+        function updateBookingStepUI() {
+            // Hide all steps
+            [1, 2, 3, 4].forEach(s => {
+                document.getElementById(`stepContent${s}`).classList.add('hidden');
+                
+                const dot = document.getElementById(`stepDot${s}`);
+                if (s === state.bookingStep) {
+                    dot.className = 'flex items-center gap-2 text-brand-purple font-bold';
+                    dot.querySelector('span').className = 'w-6 h-6 rounded-full bg-brand-purple text-white flex items-center justify-center text-[11px] font-bold shadow-md shadow-brand-purple/40';
+                } else if (s < state.bookingStep) {
+                    dot.className = 'flex items-center gap-2 text-emerald-400 font-bold';
+                    dot.querySelector('span').className = 'w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[11px] font-bold';
+                } else {
+                    dot.className = 'flex items-center gap-2 text-slate-500';
+                    dot.querySelector('span').className = 'w-6 h-6 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center text-[11px] font-bold';
+                }
+            });
+
+            // Show active step content
+            document.getElementById(`stepContent${state.bookingStep}`).classList.remove('hidden');
+
+            // Controls Btn
+            const prevBtn = document.getElementById('modalPrevBtn');
+            const nextBtn = document.getElementById('modalNextBtn');
+
+            if (state.bookingStep === 1) {
+                prevBtn.classList.add('hidden');
+            } else {
+                prevBtn.classList.remove('hidden');
+            }
+
+            if (state.bookingStep === 4) {
+                nextBtn.innerHTML = `<span>Confirm & Pay</span> <i class="fa-solid fa-lock"></i>`;
+                nextBtn.className = "px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-teal-600 hover:to-emerald-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-500/30 transition flex items-center gap-2";
+            } else {
+                nextBtn.innerHTML = `<span>Continue</span> <i class="fa-solid fa-arrow-right"></i>`;
+                nextBtn.className = "px-6 py-2.5 bg-gradient-to-r from-brand-red to-rose-600 hover:from-rose-600 hover:to-brand-red text-white text-xs font-bold rounded-xl shadow-lg shadow-brand-red/30 transition flex items-center gap-2";
+            }
+        }
+
+        function completeBooking() {
+            const bookingId = 'CP-' + Math.floor(100000 + Math.random() * 900000);
+            
+            const ticketsSubtotal = state.selectedSeats.reduce((acc, s) => acc + s.price, 0);
+            let snacksSubtotal = 0;
+            Object.keys(state.selectedSnacks).forEach(snackId => {
+                const item = SNACKS_DATA.find(s => s.id === snackId);
+                if (item) snacksSubtotal += item.price * state.selectedSnacks[snackId];
+            });
+
+            const bookingRecord = {
+                id: bookingId,
+                movie: state.selectedMovie,
+                theater: state.selectedTheater,
+                city: state.city,
+                date: state.selectedDate,
+                showtime: state.selectedShowtime,
+                format: state.selectedFormat,
+                seats: [...state.selectedSeats],
+                snacks: { ...state.selectedSnacks },
+                totalAmount: (ticketsSubtotal + snacksSubtotal + 2.50).toFixed(2),
+                bookedAt: new Date().toLocaleDateString()
+            };
+
+            state.userBookings.unshift(bookingRecord);
+            updateTicketBadge();
+
+            closeBookingModal();
+            showToast('🎉 Booking Confirmed! Ticket stored in My Tickets.');
+            openBookingHistoryModal();
+        }
+
+        function updateTicketBadge() {
+            const badge = document.getElementById('ticketBadgeCount');
+            if (state.userBookings.length > 0) {
+                badge.innerText = state.userBookings.length;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        function openBookingHistoryModal() {
+            const container = document.getElementById('historyListContainer');
+            
+            if (state.userBookings.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12 space-y-3">
+                        <i class="fa-solid fa-ticket-simple text-4xl text-slate-600"></i>
+                        <h4 class="text-slate-300 font-bold">No active bookings</h4>
+                        <p class="text-xs text-slate-500">Book your favorite movie to view your ticket pass here!</p>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = state.userBookings.map((bk, idx) => `
+                    <div class="bg-gradient-to-r from-slate-900 to-slate-900/90 rounded-2xl border border-slate-700/80 p-5 space-y-4 shadow-xl relative overflow-hidden">
+                        <div class="absolute -right-10 -bottom-10 w-32 h-32 bg-brand-purple/10 rounded-full blur-2xl"></div>
+
+                        <!-- Ticket Header -->
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                            <div class="flex items-center gap-3">
+                                <span class="bg-brand-red text-white text-[10px] font-extrabold px-2 py-0.5 rounded uppercase">${bk.format}</span>
+                                <span class="text-xs font-bold text-slate-400">ID: ${bk.id}</span>
+                            </div>
+                            <span class="text-xs text-emerald-400 font-semibold flex items-center gap-1">
+                                <i class="fa-solid fa-circle-check"></i> Confirmed
+                            </span>
+                        </div>
+
+                        <!-- Ticket Body -->
+                        <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                            <div class="space-y-1.5 flex-1">
+                                <h4 class="text-lg font-black text-white">${bk.movie.title}</h4>
+                                <p class="text-xs text-slate-300"><i class="fa-solid fa-location-dot text-brand-red mr-1"></i> ${bk.theater}, ${bk.city}</p>
+                                <p class="text-xs text-slate-400"><i class="fa-regular fa-calendar mr-1"></i> ${bk.date} | ${bk.showtime}</p>
+                                <p class="text-xs text-slate-200 font-bold"><i class="fa-solid fa-chair text-emerald-400 mr-1"></i> Seats: ${bk.seats.map(s => s.id).join(', ')}</p>
+                            </div>
+
+                            <!-- QRCode Container -->
+                            <div class="flex flex-col items-center bg-white p-2 rounded-xl shadow-md">
+                                <div id="qrcode-${bk.id}" class="w-20 h-20"></div>
+                                <span class="text-[9px] font-bold text-slate-800 mt-1">SCAN AT ENTRY</span>
+                            </div>
+                        </div>
+
+                        <!-- Ticket Footer Action -->
+                        <div class="flex items-center justify-between pt-2 border-t border-slate-800/80 text-xs">
+                            <span class="text-slate-400">Total Paid: <strong class="text-white">$${bk.totalAmount}</strong></span>
+                            <button onclick="printTicket('${bk.id}')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg font-semibold transition flex items-center gap-1.5">
+                                <i class="fa-solid fa-print text-xs"></i> Print Pass
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+
+                // Generate QR Codes
+                setTimeout(() => {
+                    state.userBookings.forEach(bk => {
+                        const qrElem = document.getElementById(`qrcode-${bk.id}`);
+                        if (qrElem && qrElem.innerHTML === '') {
+                            new QRCode(qrElem, {
+                                text: `CINEPASS-${bk.id}-${bk.movie.title}`,
+                                width: 80,
+                                height: 80,
+                                colorDark: "#0b0f19",
+                                colorLight: "#ffffff",
+                                correctLevel: QRCode.CorrectLevel.H
+                            });
+                        }
+                    });
+                }, 100);
+            }
+
+            document.getElementById('bookingHistoryModal').classList.remove('hidden');
+        }
+
+        function closeBookingHistoryModal() {
+            document.getElementById('bookingHistoryModal').classList.add('hidden');
+        }
+
+        function printTicket(id) {
+            showToast(`Preparing printable receipt for #${id}...`);
+            setTimeout(() => {
+                window.print();
+            }, 500);
+        }
+
+        function openTrailerModal(url) {
+            document.getElementById('trailerIframe').src = url;
+            document.getElementById('trailerModal').classList.remove('hidden');
+        }
+
+        function closeTrailerModal() {
+            document.getElementById('trailerIframe').src = '';
+            document.getElementById('trailerModal').classList.add('hidden');
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMessage').innerText = msg;
+            
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.classList.remove('translate-y-10', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('translate-y-10', 'opacity-0');
+                setTimeout(() => {
+                    toast.classList.add('hidden');
+                }, 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
